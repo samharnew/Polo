@@ -40,10 +40,10 @@ class PoloObsSet {
   void addObs ( PoloObsAbs& obs );
   /**< add another observable to the observable set */
 
-  PoloObsAbs* getObs ( PoloObsID& id );
+  PoloObsAbs* getObs ( PoloObsID id );
   /**< return the observable with a given ID */
 
-  int getObsNum( PoloObsID& id );
+  int getObsNum( PoloObsID id );
   /**< return the observable number of a given ID. Return -1 if doesn't exist */
 
   void addBackground  ( PoloMeasSet& bg  );

@@ -169,7 +169,7 @@ std::vector<PoloObsID> PoloObsSet::getIDList(){
 }
 
 
-int PoloObsSet::getObsNum ( PoloObsID& id ){
+int PoloObsSet::getObsNum ( PoloObsID id ){
   
   for (unsigned i = 0; i < _obs.size(); i++){
     if (_obs.at(i)->getPoloObsID() == id) return i;
@@ -177,7 +177,7 @@ int PoloObsSet::getObsNum ( PoloObsID& id ){
   return -1;
 }
 
-PoloObsAbs* PoloObsSet::getObs ( PoloObsID& id ){
+PoloObsAbs* PoloObsSet::getObs ( PoloObsID id ){
   
   for (unsigned i = 0; i < _obs.size(); i++){
     if (_obs.at(i)->getPoloObsID() == id) return _obs.at(i);

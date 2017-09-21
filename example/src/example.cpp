@@ -350,7 +350,10 @@ void cisiFitExample(){
   //Make a PoloMeasSet to describe the bin-by-bin backgrounds.
   //   NOTE: The PoloMeasSet can be very easily saved and loaded
   //   to/from a text file. So for your analysis you can determine
-  //   and save these elsewhere, then quickly load them
+  //   and save these elsewhere, then quickly load them using:
+  //
+  //   PoloMeasSet DT_KSOmega_eff( filename );
+  //
 
   PoloMeasSet DT_KSOmega_eff;
   for (int i = 1; i <= nFourPiBinPairs; i++ ){
@@ -440,7 +443,7 @@ void cisiFitExample(){
     /*****  4pi vs. KK *****/
 
     //get the expected yield
-    double expectedYield = DT_KK_meas.getObs( PoloObsID(+i) )->getVal();
+    double expectedYield = DT_KK.getObs( PoloObsID(+i) )->getVal();
     //sample from a Poisson distribution
     double yield = gRandom->Poisson(expectedYield);
     //set the measurement
@@ -449,14 +452,13 @@ void cisiFitExample(){
     /*****  4pi vs. PiPi *****/
 
     //get the expected yield
-    expectedYield = DT_PiPi_meas.getObs( PoloObsID(+i) )->getVal();
-    expectedErr   = sqrt(expectedYield);
+    expectedYield = DT_PiPi.getObs( PoloObsID(+i) )->getVal();
 
     //For PiPi we are instead going to use Gaussian stats.
-    yield = gRandom->Gaus(expectedYield, expectedErr);
+    yield = gRandom->Gaus( expectedYield, sqrt(expectedYield) );
     
     //Note that this time we also give an uncertainty!
-    DT_PiPi_meas.setMeas( PoloObsID(+i), PoloMeas(yield, sqrt(yield)) );
+    DT_PiPi_meas.setMeas( PoloObsID(+i), PoloMeas(yield, sqrt(expectedYield) ) );
 
 
   }
@@ -640,20 +642,81 @@ void gammaFitExample(){
   //For each phase spave bin add an efficiency of 80%
   BmToDKm.addEfficiencies( PoloMeas(0.80) ); 
 
+  //Might also want to add relative efficiencies one-by-one...
+  BpToDKp.addEfficiencies( PoloObsID(+1), PoloMeas(0.80) ); 
+  BpToDKp.addEfficiencies( PoloObsID(+3), PoloMeas(0.62) ); 
+  BpToDKp.addEfficiencies( PoloObsID(-2), PoloMeas(0.65) ); 
+  //... 
+  
+  //Or you can do them all together using a PoloMeasSet...
+  PoloMeasSet BpToDKp_eff;
+  for (int i = -nFourPiBinPairs; i <= nFourPiBinPairs; i++){
+    if (i==0) continue;
+    BpToDKp_eff.setMeas( PoloObsID(i), PoloMeas(0.80) );
+  }
+  BpToDKp.addEfficiencies( BpToDKp_eff );
+  
+  //NOTE: A PoloMeasSet can be easily saved and loaded to a text file,
+  //so you could save them in another piece of code, and quicky load them
+  //using:
+  // PoloMeasSet BpToDKp_eff(filename);
+
+
   //For each phase spave bin add an expected background yield of 4.0
+  //Can also do all the tricks shown above for the efficiency for bin-
+  //by-bin backgrounds.
   BmToDKm.addBackground  ( PoloMeas(4.0 ) ); 
+  BpToDKp.addBackground  ( PoloMeas(3.0 ) ); 
   
-  //Make a llh term using each of the observable sets. Usually one could pass 
-  // a PoloMeasSet here with the actual experimental measurements. But since
-  // we are just using this to generate toys, we just call this function.
-  PoloLLHSum llhA = BpToDKp.getLLHForToys();
-  PoloLLHSum llhB = BmToDKm.getLLHForToys();
-  
-  //Make a fitter, and add the two llh expressions
+  //Make a fitter
   PoloFitter fitter(&parSet);
- 
-  fitter.addLLH(llhA);
-  fitter.addLLH(llhB);
+  
+  //Add observables to the fitter. When fitting experimental 
+  //data, one would also provide measured yields here. Since
+  //we are generating and fitting toys, they are not needed
+  //in this instance.
+  fitter.addObs(BpToDKp);
+  fitter.addObs(BmToDKm);
+
+  // NOTE**** Below, I just show how it would 
+  //     **** be done for an experimental measurement
+
+  if (false){
+
+    // If you're just counting B->DK yields...
+
+    PoloMeasSet Meas_BpToDKp_case1;
+    Meas_BpToDKp_case1.setMeas( PoloObsID(+1), PoloMeas(5) );
+    Meas_BpToDKp_case1.setMeas( PoloObsID(+2), PoloMeas(4) );
+    //...
+    fitter.addObs(BmToDKm, Meas_BpToDKp_case1);
+    
+
+
+    //If you're fitting B->DK yields and they have an uncertainty...
+
+    PoloMeasSet Meas_BpToDKp_case2;
+    Meas_BpToDKp_case2.setMeas( PoloObsID(+1), PoloMeas(5.2, 2.3) );
+    Meas_BpToDKp_case2.setMeas( PoloObsID(+2), PoloMeas(4.3, 1.2) );
+    //...
+    fitter.addObs(BmToDKm, Meas_BpToDKp_case2);
+
+
+
+    //If you're fitted B->DK yields are correlated...
+
+    PoloMeasSet Meas_BpToDKp_case3;
+    Meas_BpToDKp_case3.setMeas( PoloObsID(+1), PoloMeas(5.2, 2.3) );
+    Meas_BpToDKp_case3.setMeas( PoloObsID(+2), PoloMeas(4.3, 1.2) );
+    Meas_BpToDKp_case3.setCor ( PoloObsID(+1), PoloObsID(+2), 0.4 ); //set correlation
+
+    //...
+    fitter.addObs(BmToDKm, Meas_BpToDKp_case3);
+    
+
+    //Remember, the PoloMeasSet can easily be saved elsewhere / loaded, so you 
+    //would not have to clutter your fitting script with all of the above.  
+  }
   
   //A PoloFPSnapshot holds a snapshot of all the fit parameters, uncertainties
   //and correlations. We want three of these. One to hold the generated parameters,
@@ -678,7 +741,7 @@ void gammaFitExample(){
   fitter.fixNonDependencies();
 
   //Do 200 peusdo experiments
-  for (int i = 0; i < 200; i++){
+  for (int i = 0; i < 2000; i++){
 
     //generate a toy dataset and save the parameters used to generate
     //it in genSnapshot. Note that any constrained parameters  (i.e. the 4pi 
@@ -735,8 +798,30 @@ void gammaFitExample(){
 
 int main(int argc, char** argv) {
   
-  cisiFitExample();
-  //gammaFitExample();
+  bool cisiExample  = 0;
+  bool gammaExample = 0;
+  bool help         = 0;
+
+  for(int i = 1; i<argc; i=i+2){
+  
+    //Options to do with offline selection
+    if       (std::string(argv[i])=="--cisi-example"   ) { cisiExample  =  1; i--; }
+    else if  (std::string(argv[i])=="--gamma-example"  ) { gammaExample =  1; i--; }
+    else if  (std::string(argv[i])=="--help"           ) { help         =  1; i--; }    
+    else { 
+      std::cout << "User entered invalid argument:" << argv[i] << std::endl;
+      return 0;  
+    }
+  }
+
+  if (cisiExample  ) cisiFitExample ();
+  if (gammaExample ) gammaFitExample();
+  
+  if (help || (cisiExample == 0 && gammaExample == 0) ){
+    std::cout << "--cisi-example    Run example fit to determine 4pi hadronic parameters"   << std::endl;
+    std::cout << "--gamma-example   Run example fit to determine gamma using B->DK, D->4pi" << std::endl;
+  }
+
   return 0;
 
 }
