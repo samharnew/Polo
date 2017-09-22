@@ -169,7 +169,18 @@ TVectorD    PoloMeasSet::getErrs    ( std::vector<PoloObsID> idList ){
 
 }
 
+void PoloMeasSet::setMig ( PoloObsID true_id, PoloObsID reco_id, PoloMeas meas ){
+  setCor(true_id, reco_id, meas);
+}
 
+
+PoloMeas PoloMeasSet::getMig ( PoloObsID true_id, PoloObsID reco_id ){
+  return getCor(true_id, reco_id);
+}
+
+bool PoloMeasSet::migExists ( PoloObsID true_id, PoloObsID reco_id ){
+  return corExists(true_id, reco_id);
+}
 
 
 void PoloMeasSet::save( TString filename, bool append ){

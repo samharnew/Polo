@@ -29,6 +29,7 @@ std::vector< MINT::counted_ptr<MINT::FitParameter> > PoloObsBGCor::getDependenci
 void PoloObsBGCor::print(TString prefix){
 
   PoloObsAbs::print(prefix);
+  std::cout << prefix << _bkg.getVal() << " + " << std::endl;
   _obs->print(prefix + "    ");
 
 

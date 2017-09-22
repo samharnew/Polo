@@ -1,0 +1,12 @@
+
+src/*.o
+src/Mint/*.o
+example/*.pdf
+example/.*
+example/src/*.o
+example/src/example
+*sublime*
+*.root
+*.json
+
+

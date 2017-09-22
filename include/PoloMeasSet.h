@@ -14,7 +14,7 @@
 #include "PoloObsID.h"
 #include "TMatrixD.h"
 #include "TVectorD.h"
- 
+
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -41,6 +41,14 @@ class PoloMeasSet {
 
   bool measExists( PoloObsID id );
   bool corExists ( PoloObsID id1, PoloObsID id2 );
+  
+  void setMig ( PoloObsID true_id, PoloObsID reco_id, PoloMeas meas );
+  /**< can also use this to deal with bin migration. Does 
+  exactly the same as the setCor function. */
+
+  PoloMeas getMig ( PoloObsID true_id, PoloObsID reco_id );
+
+  bool migExists ( PoloObsID true_id, PoloObsID reco_id );
 
 
   std::vector<PoloObsID> getIDList();

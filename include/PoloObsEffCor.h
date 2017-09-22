@@ -23,7 +23,19 @@ class PoloObsEffCor : public PoloObsAbs {
 
   public:
 
-  PoloObsEffCor(PoloObsAbs& obs, PoloMeas& effMeas );
+  PoloObsEffCor(PoloObsAbs& obs, PoloMeas effMeas );
+  /*< This constructor just takes a single observable,
+  and mulitplies it by the gien efficiency */
+
+  PoloObsEffCor( PoloObsAbs& obsID );
+  /*< This constructor doesn't add any observables, but 
+  just used the passed observable to give this obserable 
+  a name and an PoloObsID. Obserables can later be added
+  using the 'addObs' function. This constuctor is useful
+  when dealing with bin migration */
+
+  void addObs(PoloObsAbs& obs, PoloMeas effMeas);
+
 
   virtual double getVal();
   /**< Get the expected number of single tagged DDb->fX decays. This is just getBF() mulitpled by 

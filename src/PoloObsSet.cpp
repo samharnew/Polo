@@ -76,7 +76,10 @@ void PoloObsSet::addEfficiencies( PoloMeasSet& eff ){
 
   std::vector<PoloObsAbs*> _updatedObsList;
 
+  //This returns a list that is in the same order as the 
+  //list of observables in this class
   std::vector<PoloMeas> efflist = eff.getMeasList( getIDList() );
+
   for (unsigned i = 0; i < _obs.size(); i++){
     _updatedObsList.push_back( new PoloObsEffCor( *_obs.at(i), efflist.at(i) ) );
   }
@@ -84,6 +87,55 @@ void PoloObsSet::addEfficiencies( PoloMeasSet& eff ){
   _obs = _updatedObsList;
 
 }
+
+void PoloObsSet::addMigration( PoloMeasSet& mig ){
+
+  std::vector<PoloObsAbs*> _updatedObsList;
+  
+
+  for (unsigned i = 0; i < _obs.size(); i++){
+
+    PoloObsID id_reco = _obs.at(i)->getPoloObsID();
+    
+    PoloObsEffCor* recoObs = new PoloObsEffCor( *_obs.at(i) );
+
+    for (unsigned j = 0; j < _obs.size(); j++){
+      PoloObsID id_gen = _obs.at(j)->getPoloObsID();
+      
+      if ( mig.migExists(id_gen, id_reco) ){
+        PoloMeas migVal = mig.getMig(id_gen, id_reco);
+        recoObs->addObs( *_obs.at(j), migVal );
+      }
+    }
+    _updatedObsList.push_back( recoObs );
+
+  }
+
+  _obs = _updatedObsList;
+
+}
+
+
+void PoloObsSet::addObsSet( PoloObsSet& obsSet ){
+
+  std::vector<PoloObsAbs*> _updatedObsList;
+  
+  for (unsigned i = 0; i < _obs.size(); i++){
+
+    PoloObsAbs* thisObs  = _obs.at(i);
+    PoloObsAbs* otherObs = obsSet.getObs( thisObs->getPoloObsID() );
+
+    PoloObsSum* obsSum = new PoloObsSum( *thisObs, *otherObs );
+
+    _updatedObsList.push_back( obsSum );
+
+  }
+
+  _obs = _updatedObsList;
+
+
+}
+
 
 PoloLLHSum PoloObsSet::getLLH( PoloMeasSet& meas ){
   

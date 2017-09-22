@@ -17,6 +17,8 @@
 #include "PoloMeasSet.h"
 #include "PoloObsBGCor.h"
 #include "PoloObsEffCor.h"
+#include "PoloObsSum.h"
+
 #include "PoloLLHAbs.h"
 #include "PoloLLHSum.h"
 #include "PoloLLHPoisson.h"
@@ -69,6 +71,15 @@ class PoloObsSet {
 
   void addEfficiencies( PoloObsID id, PoloMeas eff );
   /**< add efficiency correction to observable with specific ID */
+
+  void addMigration( PoloMeasSet& mig );
+  /**< provide a migration matrix to add bin migration between
+  the observables */
+
+  void addObsSet( PoloObsSet& obsSet );
+  /**< add one observable set to another. This will add observables with 
+  matching a PoloObsID. This is useful for crossfeed backgrounds, like
+  B->Dpi background from B->DK  */
 
   void print();
   /**< print the list of observables in this set. */

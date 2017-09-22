@@ -583,7 +583,7 @@ void cisiFitExample(){
 void gammaFitExample(){
   
   //See below to understand the different fit methods.
-  int fitMethod = 0;
+  int fitMethod = 1;
 
   //Make a minuit parameter set that will contain all the fit
   //parameters used in this example.
@@ -607,17 +607,24 @@ void gammaFitExample(){
   const int  cartesian = 0;
   const int  polar     = 1;
 
-  PoloFPSetBtoDh      fpsBtoDK   ("DtoDK"   , &parSet, cartesian);
-  fpsBtoDK.setAll(rB, delB, gamma, degrees);
-  
-  //Make two normalisation fit parameters, one that will be used for B+->DK decays
-  //and the other for B- -> DK decays.
-  PoloFPSetNorm    fpsNDDbBp( &parSet, "nDDbarBp" );
-  PoloFPSetNorm    fpsNDDbBm( &parSet, "nDDbarBm" );
+  PoloFPSetBtoDh      fpsBtoDK    ("DtoDK"    , &parSet, cartesian);
+  PoloFPSetBtoDh      fpsBtoDPi   ("DtoDPi"   , &parSet, cartesian);
 
-  fpsNDDbBp.setVal(750.0);
-  fpsNDDbBm.setVal(750.0);
-  
+  fpsBtoDK .setAll(rB  , delB , gamma, degrees);
+  fpsBtoDPi.setAll(0.01, 140.0, gamma, degrees);
+
+  //Make normalisation parameters, one that will be used for B+->DK decays
+  //and the other for B- -> DK decays. Then the same for B->Dpi
+  PoloFPSetNorm    fpsNormBpToDK ( &parSet, "NormBpToDK"  );
+  PoloFPSetNorm    fpsNormBmToDK ( &parSet, "NormBmToDK"  );
+  PoloFPSetNorm    fpsNormBpToDPi( &parSet, "NormBpToDPi" );
+  PoloFPSetNorm    fpsNormBmToDPi( &parSet, "NormBmToDPi" );
+
+  fpsNormBpToDK .setVal(750.0);
+  fpsNormBmToDK .setVal(750.0);
+  fpsNormBpToDPi.setVal(7500.0);
+  fpsNormBmToDPi.setVal(7500.0);
+
   //We want to constrain the 4pi hadronic parameters to their previously measured
   //values (https://arxiv.org/abs/1709.03467). The supplementary material gives
   //the reslts in root format, that can be loaded with the PoloFPSnapshot class. 
@@ -629,17 +636,21 @@ void gammaFitExample(){
   
   //We now make a constraint using the results in fourpiHadPars. (this matches
   // the fitparameter names in the given MinuitParameterSet, with the names in 
-  // the snapshot )
+  // the snapshot, and forms a multi-variate Gaussian constraint)
   PoloConstraint* fourpiCon = fourpiHadPars.getConstraint(&parSet);
   fourpiCon->print();
   
   
   //Use the PoloObsBuilder class to quicly make B+->DK+, D->4pi and B-->DK-, D->4pi 
   //observables. These are saved in a PoloObsSet
-  PoloObsSet BpToDKp = PoloObsBuilder::buildBptoDhpObsSet(fpsPiPiPiPi, fpsBtoDK, fpsNDDbBp );
-  PoloObsSet BmToDKm = PoloObsBuilder::buildBmtoDhmObsSet(fpsPiPiPiPi, fpsBtoDK, fpsNDDbBm );
+  PoloObsSet BpToDKp = PoloObsBuilder::buildBptoDhpObsSet(fpsPiPiPiPi, fpsBtoDK, fpsNormBpToDK );
+  PoloObsSet BmToDKm = PoloObsBuilder::buildBmtoDhmObsSet(fpsPiPiPiPi, fpsBtoDK, fpsNormBmToDK );
+  
+  //And the B->Dpi ones too
+  PoloObsSet BpToDPip = PoloObsBuilder::buildBptoDhpObsSet(fpsPiPiPiPi, fpsBtoDPi, fpsNormBpToDPi );
+  PoloObsSet BmToDPim = PoloObsBuilder::buildBmtoDhmObsSet(fpsPiPiPiPi, fpsBtoDPi, fpsNormBmToDPi );
 
-  //For each phase spave bin add an efficiency of 80%
+  //For each phase spave bin mulitply by an efficiency of 80%
   BmToDKm.addEfficiencies( PoloMeas(0.80) ); 
 
   //Might also want to add relative efficiencies one-by-one...
@@ -663,11 +674,67 @@ void gammaFitExample(){
 
 
   //For each phase spave bin add an expected background yield of 4.0
-  //Can also do all the tricks shown above for the efficiency for bin-
-  //by-bin backgrounds.
+  //Can do all the tricks shown above for for bin-by-bin backgrounds.
+
   BmToDKm.addBackground  ( PoloMeas(4.0 ) ); 
-  BpToDKp.addBackground  ( PoloMeas(3.0 ) ); 
+  BpToDKp.addBackground  ( PoloMeas(4.0 ) ); 
   
+  //Can also include bin migration! Here is a very simple
+  //example (all bins migrate 10% of their yield to another
+  //random bin )
+  PoloMeasSet BpToDKp_mig;
+  for (int i = -nFourPiBinPairs; i <= nFourPiBinPairs; i++){
+    if (i == 0) continue;
+
+    PoloObsID genID (i);
+
+    int j = gRandom->Integer(nFourPiBinPairs) + 1;
+    if (gRandom->Integer(2) == 1) j = -j;
+    
+    PoloObsID recoID_90per(i);
+    PoloObsID recoID_10per(j);
+
+    //set the probability of an event being 
+    //generated in 'genID' to be reconstucted in
+    //'recoID'
+
+    if (i!=j){
+      BpToDKp_mig.setMig( genID        , recoID_90per   , 0.9 );
+      BpToDKp_mig.setMig( genID        , recoID_10per   , 0.1 );
+    }
+    else{
+      BpToDKp_mig.setMig( genID        , recoID_90per   , 1.0 );
+    }
+  }
+  
+  BpToDKp_mig.save("lol.txt");
+
+  //Apply the migration matrix
+  BpToDKp.addMigration  ( BpToDKp_mig ); 
+  
+
+  //Now adding in cross feeb background. This is when you
+  //get B->Dpi reconstructed as B->DK. This first step is
+  //to copy the B->Dpi observables, and muliply them by 
+  //the efficiency to be reconstructed as B->DK. 
+  PoloObsSet BpToDPip_crossFeed = BpToDPip;
+  PoloObsSet BmToDPim_crossFeed = BmToDPim;
+  BpToDPip_crossFeed.addEfficiencies( PoloMeas(0.02) );
+  BmToDPim_crossFeed.addEfficiencies( PoloMeas(0.02) );
+  
+  //Add the B->Dpi cross feed observables to B->DK
+  BpToDKp.addObsSet( BpToDPip_crossFeed );
+  BmToDKm.addObsSet( BmToDPim_crossFeed );
+
+
+
+  //It's informative to print the obseravble set.
+  //This prints the observables, and what obserables they depend on
+  //i.e. a background corrected obs depends on the non-background 
+  //     corrected one
+  BpToDKp.print();
+  //return;
+
   //Make a fitter
   PoloFitter fitter(&parSet);
   
@@ -677,44 +744,50 @@ void gammaFitExample(){
   //in this instance.
   fitter.addObs(BpToDKp);
   fitter.addObs(BmToDKm);
+  fitter.addObs(BpToDPip);
+  fitter.addObs(BmToDPim);
 
   // NOTE**** Below, I just show how it would 
   //     **** be done for an experimental measurement
 
   if (false){
 
-    // If you're just counting B->DK yields...
+    //There are three different situations covered:
+    
+    /********* 1 ********/
+    //If you're just counting B->DK yields...
 
     PoloMeasSet Meas_BpToDKp_case1;
     Meas_BpToDKp_case1.setMeas( PoloObsID(+1), PoloMeas(5) );
     Meas_BpToDKp_case1.setMeas( PoloObsID(+2), PoloMeas(4) );
     //...
+
     fitter.addObs(BmToDKm, Meas_BpToDKp_case1);
     
 
-
+    /********* 2 ********/
     //If you're fitting B->DK yields and they have an uncertainty...
 
     PoloMeasSet Meas_BpToDKp_case2;
     Meas_BpToDKp_case2.setMeas( PoloObsID(+1), PoloMeas(5.2, 2.3) );
     Meas_BpToDKp_case2.setMeas( PoloObsID(+2), PoloMeas(4.3, 1.2) );
     //...
+
     fitter.addObs(BmToDKm, Meas_BpToDKp_case2);
 
-
-
-    //If you're fitted B->DK yields are correlated...
+    /********* 3 ********/
+    //If have B->DK yields with correlated uncertainties...
 
     PoloMeasSet Meas_BpToDKp_case3;
     Meas_BpToDKp_case3.setMeas( PoloObsID(+1), PoloMeas(5.2, 2.3) );
     Meas_BpToDKp_case3.setMeas( PoloObsID(+2), PoloMeas(4.3, 1.2) );
     Meas_BpToDKp_case3.setCor ( PoloObsID(+1), PoloObsID(+2), 0.4 ); //set correlation
-
     //...
+
     fitter.addObs(BmToDKm, Meas_BpToDKp_case3);
     
 
-    //Remember, the PoloMeasSet can easily be saved elsewhere / loaded, so you 
+    //Remember, the PoloMeasSet can easily be saved / loaded, so you 
     //would not have to clutter your fitting script with all of the above.  
   }
   
@@ -741,18 +814,20 @@ void gammaFitExample(){
   fitter.fixNonDependencies();
 
   //Do 200 peusdo experiments
-  for (int i = 0; i < 2000; i++){
+  for (int i = 0; i < 200; i++){
 
     //generate a toy dataset and save the parameters used to generate
     //it in genSnapshot. Note that any constrained parameters  (i.e. the 4pi 
     //hadronic parameters) will be randomly sampled from their associated 
-    //constraint before the toy is generated.
+    //constraint before the toy is generated. All other parameter values are
+    //set to those in the genSnapshot provided.
     
     fitter.generateToy(gRandom, &genSnapshot);
     
     //The first method is to float all parameters and apply all constraints
     //to the total LLH to be maximised. This method was found to give large 
     //biases in the pull distribtuions   
+
     if (fitMethod == 0){
       fitter.fit(&fitSnapshot);
     }
@@ -761,15 +836,16 @@ void gammaFitExample(){
 
     //The second fit method is to float only unconstrained fit parameters. 
     //In this case, this means the hadronic parameters will be fixed,
-    //and gamma, delta, rb, and the overall normalisation will be floated.
+    //and gamma, delta, rb (or x± y±) and the overall normalisation will be floated.
     //This fit is performed nFits times, where for each, the 'constrained'
     //parameters are randomly varied according the their associated constraint. 
-    //This function returns TWO PoloFPSnapshot instances. The first contains the
+    //This function takes TWO PoloFPSnapshot instances. The first gets filled with the
     //results of a single fit where the constrained parameters are fixed to 
     //their central values. 
     //The second contains central values which are taken from the mean of the
     //individual nFits. The uncertainties + correlations are taken from the
-    //covarience of the individual nFits. 
+    //covarience of all the fit results. 
+
     if (fitMethod == 1){
       fitter.fitWFixedCon(nFits, &fitSnapshot, &fitSnapshotSys, gRandom);
       //For the pulls we want the total uncertainty, so have combined the 

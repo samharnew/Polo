@@ -1,6 +1,6 @@
 #include "PoloObsEffCor.h"
 
-PoloObsEffCor::PoloObsEffCor(PoloObsAbs& obs, PoloMeas& effMeas ) {
+PoloObsEffCor::PoloObsEffCor(PoloObsAbs& obs, PoloMeas effMeas ) {
 
   setPoloObsID( obs );
 
@@ -8,10 +8,29 @@ PoloObsEffCor::PoloObsEffCor(PoloObsAbs& obs, PoloMeas& effMeas ) {
   TString name   = obs.getName();
   setName(prefix + name);
 
-  _obs.push_back(obs.clone());
-  _eff.push_back(effMeas    );
+  addObs(obs, effMeas);
   
 }
+
+
+PoloObsEffCor::PoloObsEffCor( PoloObsAbs& obs ) {
+
+  setPoloObsID( obs );
+
+  TString prefix = "migCor___";  
+  TString name   = obs.getName();
+  setName(prefix + name);
+
+
+}
+
+void PoloObsEffCor::addObs(PoloObsAbs& obs, PoloMeas effMeas){
+
+  _obs.push_back(obs.clone());
+  _eff.push_back(effMeas    );
+
+}
+
 
 double PoloObsEffCor::getVal(){
   double val = 0.0;
@@ -48,7 +67,9 @@ void PoloObsEffCor::print(TString prefix){
 
   PoloObsAbs::print(prefix);
   for (unsigned i = 0; i < _obs.size(); i++){
-    _obs.at(i)->print(prefix + "    ");
+    std::cout << prefix << _eff.at(i).getVal() << " x " << std::endl;
+    TString prefixi = prefix + "    ";
+    _obs.at(i)->print(prefixi);
   }
 
 }
