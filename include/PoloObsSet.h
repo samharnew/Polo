@@ -3,6 +3,10 @@
  * Author: Sam Harnew, sam.harnew@gmail.com ,
  * Date: Sept 2017
  *
+ *
+ *  This holds a list of PoloObsAbs objects and indexes them using their
+ *  PoloObsID. This makes it easy to combine the observables with backgrounds,
+ *  efficiencies, migration matricies etc. that use the same indicies. (see PoloMeasSet)
  *  
  **/
 

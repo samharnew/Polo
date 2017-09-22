@@ -3,10 +3,8 @@
  * Author: Sam Harnew, sam.harnew@gmail.com ,
  * Date: Sept 2017
  *
- * An observable to describe the yield of single tagged DDb->fX decays. 
- * The hadronic parameters of the D->f decay must be given, along with the D-mixing parameters and
- * a normalisation parameter that represents the total number of DDb pairs
- *  
+ * An observable to describe the yield of B->Dh, D->f decays. Should probably update this
+ * to include D-mixing at some point.
  *  
  **/
 

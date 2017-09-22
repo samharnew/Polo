@@ -47,5 +47,53 @@ PoloObsSet PoloObsBuilder::buildBmtoDhmObsSet( PoloFPSetDtoFBinned& dtof, PoloFP
 
 }
 
+PoloObsSet PoloObsBuilder::buildDstpTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, double tmin, double tmax ){
+
+  PoloObsSet obsSet;
+  for (int i = 0; i < dtof.size(); i++){
+  	PoloObsDstTaggedYield obs( dtof.getFPSet(i), dMix, norm, +1, tmin, tmax);
+  	obsSet.addObs(obs);
+  }
+  return obsSet;
+
+}
+
+PoloObsSet PoloObsBuilder::buildDstmTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, double tmin, double tmax ){
+
+  PoloObsSet obsSet;
+  for (int i = 0; i < dtof.size(); i++){
+  	PoloObsDstTaggedYield obs( dtof.getFPSet(i), dMix, norm, -1, tmin, tmax);
+  	obsSet.addObs(obs);
+  }
+  return obsSet;
+
+}
+
+PoloObsSet PoloObsBuilder::buildDstpTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, std::vector<double> binEdges ){
+
+  PoloObsSet obsSet;
+  for (int i = 0; i < dtof.size(); i++){
+  	for (unsigned j = 0; j < binEdges.size()-1; j++){
+  	  PoloObsDstTaggedYield obs( dtof.getFPSet(i), dMix, norm, +1, binEdges.at(j),  binEdges.at(j+1), j);
+  	  obsSet.addObs(obs);
+  	}
+  }
+  return obsSet;
+
+}
+
+PoloObsSet PoloObsBuilder::buildDstmTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, std::vector<double> binEdges ){
+
+  PoloObsSet obsSet;
+  for (int i = 0; i < dtof.size(); i++){
+  	for (unsigned j = 0; j < binEdges.size()-1; j++){
+  	  PoloObsDstTaggedYield obs( dtof.getFPSet(i), dMix, norm, -1, binEdges.at(j),  binEdges.at(j+1), j);
+  	  obsSet.addObs(obs);
+  	}
+  }
+  return obsSet;
+
+
+}
 
 

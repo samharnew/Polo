@@ -22,6 +22,7 @@
 #include "PoloObsSTYield.h"
 #include "PoloObsDTYield.h"
 #include "PoloObsBtoDhYield.h"
+#include "PoloObsDstTaggedYield.h"
 
 
 class PoloObsBuilder {
@@ -34,6 +35,13 @@ class PoloObsBuilder {
   static PoloObsSet buildDTObsSet     ( PoloFPSetDtoFBinned& dtof, PoloFPSetDtoFBinned& dtog, PoloFPSetDMixing& dMix, PoloFPSetNorm& nDDb );
   static PoloObsSet buildBptoDhpObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetBtoDh& bToDh, PoloFPSetNorm& norm );
   static PoloObsSet buildBmtoDhmObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetBtoDh& bToDh, PoloFPSetNorm& norm );
+
+  static PoloObsSet buildDstpTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, double tmin = 0.0, double tmax=50.0 );
+  static PoloObsSet buildDstmTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, double tmin = 0.0, double tmax=50.0 );
+
+  static PoloObsSet buildDstpTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, std::vector<double> binEdges );
+  static PoloObsSet buildDstmTaggedObsSet( PoloFPSetDtoFBinned& dtof, PoloFPSetDMixing& dMix, PoloFPSetNorm& norm, std::vector<double> binEdges );
+
 
   ~PoloObsBuilder();
 

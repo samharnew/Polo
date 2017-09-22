@@ -12,6 +12,7 @@
 #include "PoloObsSTYield.h"
 #include "PoloObsDTYield.h"
 #include "PoloObsBtoDhYield.h"
+#include "PoloObsDstTaggedYield.h"
 
 #include "PoloObsBuilder.h"
 
@@ -134,6 +135,172 @@ namespace PDG{
 
   const double BF_D_Kenu      = 0.03538;    
   const double BF_D_Kenu_Err  = 0.00033;   
+
+}
+
+void dmixingFitExample(){
+  
+  //There are two different ways we can do this fit.
+  //fit type 1 - constrain the D-mixing parameters x and y, and fit for 
+  //             the 4pi hadronic parameters
+  //
+  //fit type 2 - constrain the 4pi hadronic parameters, and fit for 
+  //             the dmixing parameters
+
+  int fitType = 1;
+
+  MINT::MinuitParameterSet parSet;
+
+  int nFourPiBinPairs = 5;
+
+  const bool selfconj = true;
+  
+  const int cartesian = 0; //ci si ki kbi
+  const int polar     = 1; //del_D, RD, rD, ki
+
+
+  /*************************************************************
+     
+     First step is to define the 4pi final state.
+
+  *************************************************************/
+
+  //Make the final state we are interested in PiPiPiPi. This 
+  //is a self conjugate final state so bins will be made in pairs
+  // i.e. +i and -i with c_i = c_-i s
+  PoloFPSetDtoFBinned fpsPiPiPiPi("PiPiPiPi", nFourPiBinPairs, selfconj, &parSet, cartesian);
+  
+  /************************************************************
+     
+     Next step is to define the d-mixing parameters and a
+     normalisation parameter
+
+  *************************************************************/
+
+  PoloFPSetNorm    fpsNDDb( &parSet, "nDDbar" );
+  fpsNDDb.setVal(1000000.0);
+
+  PoloFPSetDMixing fpsDMix( &parSet );
+  
+  /*************************************************************
+     
+     Next we make the observables 
+
+  *************************************************************/
+  
+
+  //Define the decay time bins
+  std::vector<double> binEdges;
+  binEdges.push_back(0.5);
+  binEdges.push_back(1.0);
+  binEdges.push_back(1.5);
+  binEdges.push_back(2.0);
+  binEdges.push_back(2.5);
+  binEdges.push_back(3.0);
+  binEdges.push_back(4.0);
+  binEdges.push_back(6.0);
+  binEdges.push_back(15.0);
+  
+  //make the observables
+  PoloObsSet DstpTagged_4pi    = PoloObsBuilder::buildDstpTaggedObsSet( fpsPiPiPiPi       , fpsDMix , fpsNDDb, binEdges );
+  PoloObsSet DstmTagged_4pi    = PoloObsBuilder::buildDstpTaggedObsSet( fpsPiPiPiPi       , fpsDMix , fpsNDDb, binEdges );
+
+
+  /*************************************************************
+     
+     We also want to add some constraints to the fitter.
+
+  *************************************************************/
+  
+  //Constrain the d mixing parameters
+  PoloConDMixing con_DMixing( fpsDMix, PoloMeas( 0.00322, 0.00140 ), PoloMeas( 0.00688, 0.00060 ), -0.058 );
+  con_DMixing.setFPsToMean();
+
+  //We want to set sensible values for the 4pi hadronic parameters, so we use
+  // their previously measured values from (https://arxiv.org/abs/1709.03467). 
+  //The supplementary material gives
+  //the reslts in root format, that can be loaded with the PoloFPSnapshot class. 
+  //The results were saved using a different final state name ("pi+pi-pi+pi-" 
+  // rather than "PiPiPiPi", so we change this to make them consistent)
+  PoloFPSnapshot fourpiHadPars("../data/hadPars4pi/OptAlt5_statsyst.root");
+  fourpiHadPars.print();
+  fourpiHadPars.replaceAll("pi+pi-pi+pi-", "PiPiPiPi");
+  
+  // We now make a constraint using the results in fourpiHadPars. (this matches
+  // the fitparameter names in the given MinuitParameterSet, with the names in 
+  // the snapshot )
+  PoloConstraint* fourpiCon = fourpiHadPars.getConstraint(&parSet);
+  fourpiCon->print();
+  fourpiCon->setFPsToMean();
+
+
+  /*************************************************************
+     
+     Finally we use the obserables to create LLH terms and 
+     add them to the fitter.
+
+  *************************************************************/
+  
+  //Create a fitter that can only vary the fit parameters
+  //in the given MinuitParameterSet
+  PoloFitter fitter(&parSet);
+  
+  //Add an observable and its measurement to the fitter. 
+  //Since we're only dealing with toys in this example, no
+  //need to give experimental measurements. (see other 
+  // examples if you want to know how to do this )
+  fitter.addObs( DstpTagged_4pi  );
+  fitter.addObs( DstmTagged_4pi  );
+
+  //Also want to add the constraints...
+
+  if (fitType == 1) fitter.addConstraint( con_DMixing       );
+  if (fitType == 2) fitter.addConstraint( *fourpiCon        );
+
+  //Create a fit parameter shapshot that contains the
+  //values of the fit parameters that will be used to 
+  //generate the toy datasets. 
+  PoloFPSnapshot genSnapshot(&parSet);
+
+  //Create another fit parameter shapshot that will 
+  //later be used to hold the fitted values of the fit paramters
+  PoloFPSnapshot fitSnapshot(&parSet);
+
+  //This class makes pull distributions easy. Give it pointers to the generated
+  //and fitted snapshot. Whenever addPull() gets called, the current values in 
+  //these snapshots are used to add another entry to the pull distribution
+  PoloFPPulls pulls(&genSnapshot, &fitSnapshot);
+  
+  //Look at all the LLH terms and constraints added to the fitter, and see if
+  //there are any fit parameters that do not effect their values. If there are,
+  //fix them. This makes it easy to remove a particualr final state, for example,
+  //and not have stray fit parameters that cause bad convergence.
+  fitter.fixNonDependencies();
+  
+
+  for (int i = 0; i < 200; i++){
+
+    //generate a toy dataset and save the parameters used to generate
+    //it in genSnapshot. Note that any constrained parameters  (i.e. the 4pi 
+    //hadronic parameters) will be randomly sampled from their associated 
+    //constraint before the toy is generated. Any parameters that are NOT
+    //constrained will be taken from genSnapshot
+
+    fitter.generateToy(gRandom, &genSnapshot);
+    
+    //maximise the LLH and save the resulting central values,
+    //uncertainties and correlations in fitSnapshot
+    fitter.fit(&fitSnapshot);
+
+    //print some info about the current state of the fitter. 
+    fitter.print();
+
+    //add an instance to the pull thingy
+    pulls.addPull();
+  }
+  
+  //print the pull means and widths
+  pulls.printPulls();
 
 }
 
@@ -597,6 +764,8 @@ void gammaFitExample(){
   const bool selfconj = true;
   PoloFPSetDtoFBinned fpsPiPiPiPi("PiPiPiPi", nFourPiBinPairs, selfconj, &parSet);
   
+
+
   //Create a set of fit parameters that describes the B->DK decay. This can be done 
   //in either catesian or polar coordinates (x^± y± or rb delta gamma). Have also
   //set some realistic values for the toy studies.
@@ -639,7 +808,7 @@ void gammaFitExample(){
   // the snapshot, and forms a multi-variate Gaussian constraint)
   PoloConstraint* fourpiCon = fourpiHadPars.getConstraint(&parSet);
   fourpiCon->print();
-  
+  fourpiCon->setFPsToMean();
   
   //Use the PoloObsBuilder class to quicly make B+->DK+, D->4pi and B-->DK-, D->4pi 
   //observables. These are saved in a PoloObsSet
@@ -874,28 +1043,32 @@ void gammaFitExample(){
 
 int main(int argc, char** argv) {
   
-  bool cisiExample  = 0;
-  bool gammaExample = 0;
-  bool help         = 0;
+  bool cisiExample    = 0;
+  bool gammaExample   = 0;
+  bool dmixingExample = 0;
+  bool help           = 0;
 
   for(int i = 1; i<argc; i=i+2){
   
     //Options to do with offline selection
-    if       (std::string(argv[i])=="--cisi-example"   ) { cisiExample  =  1; i--; }
-    else if  (std::string(argv[i])=="--gamma-example"  ) { gammaExample =  1; i--; }
-    else if  (std::string(argv[i])=="--help"           ) { help         =  1; i--; }    
+    if       (std::string(argv[i])=="--cisi-example"     ) { cisiExample    =  1; i--; }
+    else if  (std::string(argv[i])=="--gamma-example"    ) { gammaExample   =  1; i--; }
+    else if  (std::string(argv[i])=="--dmixing-example"  ) { dmixingExample =  1; i--; }
+    else if  (std::string(argv[i])=="--help"             ) { help           =  1; i--; }    
     else { 
       std::cout << "User entered invalid argument:" << argv[i] << std::endl;
       return 0;  
     }
   }
 
-  if (cisiExample  ) cisiFitExample ();
-  if (gammaExample ) gammaFitExample();
-  
-  if (help || (cisiExample == 0 && gammaExample == 0) ){
-    std::cout << "--cisi-example    Run example fit to determine 4pi hadronic parameters"   << std::endl;
-    std::cout << "--gamma-example   Run example fit to determine gamma using B->DK, D->4pi" << std::endl;
+  if (cisiExample    ) cisiFitExample   ();
+  if (gammaExample   ) gammaFitExample  ();
+  if (dmixingExample ) dmixingFitExample();
+
+  if (help || (cisiExample == 0 && gammaExample == 0 && dmixingExample == 0) ){
+    std::cout << "--cisi-example      Run example fit to determine 4pi hadronic parameters from correlated DDb decays"   << std::endl;
+    std::cout << "--dmixing-example   Run example fit to determine 4pi hadronic parameters from D*->Dpi decays" << std::endl;
+    std::cout << "--gamma-example     Run example fit to determine gamma using B->DK, D->4pi" << std::endl;
   }
 
   return 0;
