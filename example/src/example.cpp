@@ -30,6 +30,7 @@
 
 #include "PoloConK0PiPiCiSiCleo.h"
 #include "PoloConK0PiPiKiKbiCleo.h"
+#include "PoloLLHScanner.h"
 
 
 namespace PDG{
@@ -872,6 +873,8 @@ void gammaFitExample(){
       BpToDKp_mig.setMig( genID        , recoID_10per   , 0.1 );
     }
     else{
+      //In this case the 10% migration has gone into the generated
+      //bin, so use 100% instead
       BpToDKp_mig.setMig( genID        , recoID_90per   , 1.0 );
     }
   }
@@ -882,7 +885,7 @@ void gammaFitExample(){
   BpToDKp.addMigration  ( BpToDKp_mig ); 
   
 
-  //Now adding in cross feeb background. This is when you
+  //Now adding in cross feed background. This is when you
   //get B->Dpi reconstructed as B->DK. This first step is
   //to copy the B->Dpi observables, and muliply them by 
   //the efficiency to be reconstructed as B->DK. 
@@ -900,7 +903,7 @@ void gammaFitExample(){
   //It's informative to print the obseravble set.
   //This prints the observables, and what obserables they depend on
   //i.e. a background corrected obs depends on the non-background 
-  //     corrected one
+  //     corrected one etc.
   BpToDKp.print();
   //return;
 
@@ -969,6 +972,9 @@ void gammaFitExample(){
   PoloFPSnapshot fitSnapshot(&parSet);
   PoloFPSnapshot fitSnapshotSys(&parSet);
   
+  PoloFPSnapshotEnsemble ensemble;
+
+
   //This class makes pull distributions easy. Give it pointers to the generated
   //and fitted snapshot. Whenever addPull() gets called, the current values in 
   //these snapshots are used to add another entry to the pull distribution
@@ -981,9 +987,22 @@ void gammaFitExample(){
   //there are any fit parameters that do not effect their values. If there are,
   //fix them
   fitter.fixNonDependencies();
+  
+
+  int nExp = 5;
 
   //Do 200 peusdo experiments
-  for (int i = 0; i < 200; i++){
+  for (int i = 0; i < nExp; i++){
+     
+    //For the final toy we are going to do some LLH scans
+    if (i == nExp - 1){
+      fitter.add1DScan("xp"  , "DtoDK_xp", 100, -0.35, +0.35);
+      fitter.add1DScan("xm"  , "DtoDK_xm", 100, -0.35, +0.35);
+      fitter.add1DScan("yp"  , "DtoDK_yp", 100, -0.35, +0.35);
+      fitter.add1DScan("ym"  , "DtoDK_ym", 100, -0.35, +0.35);
+      fitter.add2DScan("xpyp", "DtoDK_xp", "DtoDK_yp", 50, -0.35, +0.35, 50, -0.35, +0.35);
+      fitter.add2DScan("xmym", "DtoDK_xm", "DtoDK_ym", 50, -0.35, +0.35, 50, -0.35, +0.35);
+    }
 
     //generate a toy dataset and save the parameters used to generate
     //it in genSnapshot. Note that any constrained parameters  (i.e. the 4pi 
@@ -1023,8 +1042,14 @@ void gammaFitExample(){
       fitSnapshot.combineUncertainties(fitSnapshotSys);
     }
     
+    ensemble.add(fitSnapshot);
     //Add a new instance to the pull distributions
     pulls.addPull();
+   
+    //Save the parameter scans to a file    
+    if (i == nExp - 1){
+      fitter.saveScans("gammaLLHscans.root");
+    }
   }
   
   //draw and print the pull distributions.
@@ -1035,9 +1060,29 @@ void gammaFitExample(){
   //measured yields for each observable, and the expected yields
   //as determined from the current state of the fit parameters.
   fitter.print();
+  
+
+  //Load the LLH scanner we saved earlier...
+  PoloLLHScanner scanner("gammaLLHscans.root");   
+
+  //first we plot the raw scans...
+  scanner.plot("parscans_");
+
+  //now plot the deltaLLH = 1,4,9 contours for the 2D scans...
+  std::vector<double> conts;
+  conts.push_back(1.0);
+  conts.push_back(4.0);
+  conts.push_back(9.0);
+
+  scanner.plotContours("parconts_", conts);
+
+  //Now we get the xy+ and xy- scans and plot them on the same plot
+
+  scanner.plotOverlappingContours("xpyp", "xmym", "overlappedScans.pdf", conts);
+
+
 
 }
-
 
 
 
@@ -1070,6 +1115,7 @@ int main(int argc, char** argv) {
     std::cout << "--dmixing-example   Run example fit to determine 4pi hadronic parameters from D*->Dpi decays" << std::endl;
     std::cout << "--gamma-example     Run example fit to determine gamma using B->DK, D->4pi" << std::endl;
   }
+  
 
   return 0;
 

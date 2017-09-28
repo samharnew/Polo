@@ -29,6 +29,8 @@
 #include "PoloLLHGaus.h"
 #include "PoloLLHPoisson.h"
 
+#include "PoloLLHScanner.h"
+
 
 #include <fstream>
 #include <utility>
@@ -47,6 +49,8 @@ class PoloFitter : public MINT::Minimisable {
   std::vector<PoloConstraint* > _randomisers;
 
   MINT::Minimiser* _minimiser;
+
+  PoloLLHScanner* _scanner;
   
   bool _minos;
 
@@ -132,7 +136,7 @@ class PoloFitter : public MINT::Minimisable {
   virtual double getVal();
   /**< the total LLH that we want to maximise */
 
-  int fit(PoloFPSnapshot* snap = 0, MINT::Minimiser* mini = 0);
+  int fit(PoloFPSnapshot* snap = 0, MINT::Minimiser* mini = 0, bool doScans = 1);
   /**< maximise the LLH wrt all fit parameter dependencies */
 
   int fitWFixedCon(int nfits=100, PoloFPSnapshot* statresults=0, PoloFPSnapshot* sysresults=0, TRandom* random=0, MINT::Minimiser* mini=0);
@@ -155,6 +159,26 @@ class PoloFitter : public MINT::Minimisable {
 
   void print();
   /**< print some info */
+
+  void plot(TString dir);
+  /**< print some info */
+
+  void plotScans(TString dir);
+
+  void saveScans(TString dir);
+
+
+  int add1DScan(TString scanname, TString name1, int nbinsx, double xmin, double xmax);
+  /**< add a 1D LLH scan that you would like. Every time fit() is called, this scan will
+  also be done. At each scan point, the remaining fit parameters are adjusited to minimise 
+  the LLH */
+
+  int add2DScan(TString scanname, TString name1, TString name2, int nbinsx, double xmin, double xmax, int nbinsy, double ymin, double ymax);
+  /**< add a 2D LLH scan that you would like. Every time fit() is called, this scan will
+  also be done. At each scan point, the remaining fit parameters are adjusited to minimise 
+  the LLH */
+
+
 
   ~PoloFitter();
   /**< destructor */

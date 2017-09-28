@@ -53,8 +53,12 @@ class PoloFPSnapshot  {
   /**< Make a snapshot with the given names. This snapshot will not have associated fit parameters
   so some functions will not work */
 
-  PoloFPSnapshot(TString filename);
+  PoloFPSnapshot(TString filename, TString dirname = "");
   /**< Load snapshot from a file. This snapshot will not have associated fit parameters
+  so some functions will not work */
+
+  PoloFPSnapshot(TDirectory* dir);
+  /**< Load snapshot from a TDirectory. This snapshot will not have associated fit parameters
   so some functions will not work */
 
   void updateSnapshotFromFPs();
@@ -164,6 +168,11 @@ class PoloFPSnapshot  {
   void compare(PoloFPSnapshot& other);
   /**< print a comparison between this snapshot and the one given */
 
+  bool equal(PoloFPSnapshot& other, double tollerance = 0.05);
+  /**< are these two snapshots describing the same point in parameter space?
+  If the parameters are fixed, their values must be identical. If they are not
+  fixed, each parameter must be within (val_1 - val_2)/sqrt(err_1*err_1 + err_2*err_2) < tollerance*/
+
   void print();
   /**< print this snapshot */
 
@@ -183,8 +192,14 @@ class PoloFPSnapshot  {
   /**< load the snapshot in the given file and copy over anything that is associtated to
   fit paramters shared with this snapshot */
 
+  void loadOverwrite(TDirectory* dir);
+  /**< load the snapshot in the given file and overwrite all info in this one */
+
   void save(TString filename);
   /**< save this snapshot to a file */
+
+  void save(TDirectory* dir);
+  /**< save this snapshot to a TDirectory */
 
   void normaliseParameters(std::vector<TString> paramnames);
   /**< this normalises the given parameters (so they sum to 1) and

@@ -3,7 +3,8 @@
 PoloFitter::PoloFitter(MINT::MinuitParameterSet* parSet) :
   _parSet(parSet),
   _minimiser(0),
-  _minos(0)
+  _minos(0),
+  _scanner( 0 )
 {
   //MINT::Minimisable needs this...
   setPset(_parSet);
@@ -166,7 +167,7 @@ double PoloFitter::getVal(){
 
 }
 
-int PoloFitter::fit(PoloFPSnapshot* results, MINT::Minimiser* mini){
+int PoloFitter::fit(PoloFPSnapshot* results, MINT::Minimiser* mini, bool doScans){
   
 
   bool migradHesseSuccess = 1;
@@ -211,6 +212,9 @@ int PoloFitter::fit(PoloFPSnapshot* results, MINT::Minimiser* mini){
   else if ( istat              == 1       ) { errCode = 7; errMsg = "COVARIENCE MATRIX ONLY APPROX"; }
   else if ( istat              == 2       ) { errCode = 8; errMsg = "COVARIENCE MATRIX NOT POS DEF"; }
   
+  if (_scanner != 0 && doScans == true){
+    _scanner->addMinimiser(mini);
+  }
 
   std::cout << "********************** ObservableFitter::fit() **********************" << std::endl;
   std::cout << "*********************************************************************" << std::endl;
@@ -236,7 +240,7 @@ int PoloFitter::fitWFixedCon(int nfits, PoloFPSnapshot* statresults, PoloFPSnaps
 
   for (int i = 0; i < nfits; i++){
     setFPsFromConstraints(random);
-    fit(sysresults, mini);
+    fit(sysresults, mini, false);
     fpEnsemble.add(*sysresults);
   }
   
@@ -336,6 +340,34 @@ void PoloFitter::print(){
   }
 
 }
+
+int PoloFitter::add1DScan(TString scanname, TString name1, int nbinsx, double xmin, double xmax){
+   
+  if (_scanner == 0){
+    PoloFPSnapshot snap(_parSet);
+    _scanner = new PoloLLHScanner(snap);
+  }
+  _scanner->add1Dscan(scanname, name1, nbinsx, xmin, xmax);
+
+}
+
+int PoloFitter::add2DScan(TString scanname, TString name1, TString name2, int nbinsx, double xmin, double xmax, int nbinsy, double ymin, double ymax){
+  if (_scanner == 0){
+    PoloFPSnapshot snap(_parSet);
+    _scanner = new PoloLLHScanner(snap);
+  }
+  _scanner->add2Dscan(scanname, name1, name2, nbinsx, xmin, xmax, nbinsy, ymin, ymax);
+
+}
+
+void PoloFitter::plotScans(TString dir){
+  _scanner->plot(dir);
+}
+
+void PoloFitter::saveScans(TString filename){
+  _scanner->save(filename);
+}
+
 
 PoloFitter::~PoloFitter(){
 

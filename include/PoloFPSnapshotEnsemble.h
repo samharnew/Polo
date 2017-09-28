@@ -61,9 +61,21 @@ class PoloFPSnapshotEnsemble {
   in the ensemble, and uncertainties / correlations taken from the covarienvce 
   of the snapshots in the ensemble */
 
+  bool containsEqual( PoloFPSnapshot& shapshot, double tollerance );
+  /**< compare the given snapshot to all in the Ensemble, and see if any are the 
+  same (within tollerance). See PoloFPSnapshot::equal() for more details.  */
+  
+  void save(TString filename);
+  void save(TDirectory* dir);
+
+
+  void load(TString filename);
+  void load(TDirectory* dir);
+
+
   virtual ~PoloFPSnapshotEnsemble();
   /**< desctructor */
-  
+
 };
 
 

@@ -110,6 +110,70 @@ PoloFPSnapshot PoloFPSnapshotEnsemble::getSysSnapshot(){
   
 }
 
+bool PoloFPSnapshotEnsemble::containsEqual( PoloFPSnapshot& shapshot, double tollerance ){
+
+  int nSnaps = _shapshots.size();
+
+  for (int i = 0; i < nSnaps; i++){
+    if ( _shapshots.at(i).equal(shapshot, tollerance) == true ) return true;
+  }
+
+  return false;
+
+}
+
+void PoloFPSnapshotEnsemble::save(TString filename){
+  
+  TFile* file = new TFile( filename, "RECREATE");
+  
+  save(file);
+
+  file->Close();
+
+}
+
+void PoloFPSnapshotEnsemble::save(TDirectory* dir){
+  
+  dir->cd();
+
+  int nSnaps = _shapshots.size();
+
+  for (int i = 0; i < nSnaps; i++){
+    TString dirname = "snapshot";
+    dirname += i;
+    TDirectory* diri = dir->mkdir(dirname);
+    _shapshots.at(i).save(diri);
+  }
+
+}
+
+void PoloFPSnapshotEnsemble::load(TString filename){
+  
+  TFile* file = new TFile( filename, "READ");
+  
+  load(file);
+  
+  file->Close();
+
+}
+
+void PoloFPSnapshotEnsemble::load(TDirectory* dir){
+  
+  
+  for (int i = 0; i < 10000; i++){
+    TString dirname = "snapshot";
+    dirname += i;
+    if ( dir->GetDirectory(dirname) != 0){
+      PoloFPSnapshot snap( dir->GetDirectory(dirname) );
+      add(snap);
+    }
+    else{
+      break;
+    }
+  }
+  
+
+}
 
 PoloFPSnapshotEnsemble::~PoloFPSnapshotEnsemble() {
     

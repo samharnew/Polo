@@ -45,20 +45,40 @@ PoloFPSnapshot::PoloFPSnapshot( std::vector<TString> names ) :
 
 
 
-PoloFPSnapshot::PoloFPSnapshot(TString filename) :
+PoloFPSnapshot::PoloFPSnapshot(TString filename, TString dirname) :
   _parSet(0), 
   _neg2LLH(0.0)
 {
 
   TFile* file = new TFile(filename, "READ");
+  TDirectory* dir = file;
 
-  if (file == 0){
-    std::cout << "File does not exist!" << std::endl;
+  if (dirname != ""){
+    dir = file->GetDirectory(dirname);
   }
 
-  TMatrixD* correlations = (TMatrixD*)file->Get("correlationMatrix"   );
-  TTree*    tree         = (TTree   *)file->Get("FitParameterSnapshot");
-  TMatrixD* neg2LLH      = (TMatrixD*)file->Get("neg2LLH");
+  if (dir == 0){
+    std::cout << "File does not exist!" << std::endl;
+  }
+  
+  loadOverwrite(dir);
+
+  file->Close();
+
+}
+
+PoloFPSnapshot::PoloFPSnapshot(TDirectory* dir){
+
+  loadOverwrite(dir);
+
+}
+
+
+void PoloFPSnapshot::loadOverwrite(TDirectory* dir){
+
+  TMatrixD* correlations = (TMatrixD*)dir->Get("correlationMatrix"   );
+  TTree*    tree         = (TTree   *)dir->Get("FitParameterSnapshot");
+  TMatrixD* neg2LLH      = (TMatrixD*)dir->Get("neg2LLH");
 
   if (correlations == 0){
     std::cout << "correlations does not exist!" << std::endl;
@@ -90,6 +110,12 @@ PoloFPSnapshot::PoloFPSnapshot(TString filename) :
   tree->SetBranchAddress( "errp"         , &errp          );
   tree->SetBranchAddress( "errm"         , &errm          );  
   
+  _name .clear();
+  _mean .clear();
+  _err  .clear();
+  _errp .clear();
+  _errm .clear();
+
   for (int i = 0; i < tree->GetEntries(); i++){
     tree->GetEntry(i);
     _name .push_back(*parameterName);
@@ -99,9 +125,9 @@ PoloFPSnapshot::PoloFPSnapshot(TString filename) :
     _errm .push_back(errm         );
   }
   
-  file->Close();
-
 }
+
+
 
 void PoloFPSnapshot::updateSnapshotFromFPs(){
 
@@ -434,6 +460,30 @@ double PoloFPSnapshot::pull(PoloFPSnapshot& other, MINT::counted_ptr<MINT::FitPa
 
 }
 
+bool PoloFPSnapshot::equal(PoloFPSnapshot& other, double tollerance){
+
+  for (int i = 0; i < size(); i++){
+    
+    double mean1 =       mean(i);
+    double mean2 = other.mean(i);
+    double err1  =       err (i);
+    double err2  = other.err (i);
+    
+    if (err1 == 0.0 && err2 == 0.0){
+      if (mean1 != mean2) return false;
+    }
+    else{
+      double resid = mean1 - mean2;
+      double err   = sqrt(err1*err1 + err2*err2);
+      if ( fabs(resid/err) > tollerance ) return false;
+    }
+  }
+
+  return true; 
+}  
+
+
+
 
 void PoloFPSnapshot::compare(PoloFPSnapshot& other){
 
@@ -543,6 +593,16 @@ void PoloFPSnapshot::load(TString filename){
 void PoloFPSnapshot::save(TString filename){
 
   TFile* file = new TFile(filename, "RECREATE");
+  
+  save(file);
+
+  file->Close();
+
+}
+
+void PoloFPSnapshot::save(TDirectory* dir){
+
+  dir->cd();
 
   _correlations.Write("correlationMatrix");
   
@@ -575,7 +635,6 @@ void PoloFPSnapshot::save(TString filename){
   }
   
   tree->Write();
-  file->Close();
 
 }
 
